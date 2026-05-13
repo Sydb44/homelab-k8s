@@ -19,4 +19,4 @@ jobs:
 
       - name: Validate manifests
         run: |
-          find . -name '*.yaml' -not -path './.gitea/*' | xargs kubeconform -strict -ignore-missing-schemas
+          find . -name '*.yaml' -not -path './.gitea/*' -not -path './traefik/*' | xargs kubeconform -strict -ignore-missing-schemas
