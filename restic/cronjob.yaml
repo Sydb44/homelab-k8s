@@ -1,0 +1,55 @@
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: restic-backup
+  namespace: default
+spec:
+  schedule: "0 3 * * *"
+  concurrencyPolicy: Forbid
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          nodeSelector:
+            kubernetes.io/hostname: srv-01
+          restartPolicy: OnFailure
+          containers:
+            - name: restic
+              image: restic/restic:latest
+              command:
+                - /bin/sh
+                - -c
+                - |
+                  restic snapshots || restic init
+                  restic backup /data/gitea /data/vaultwarden /data/nextcloud /data/paperless
+                  restic forget --keep-daily 7 --keep-weekly 4 --keep-monthly 3 --prune
+              env:
+                - name: AWS_ACCESS_KEY_ID
+                  valueFrom:
+                    secretKeyRef:
+                      name: restic-secret
+                      key: b2-key-id
+                - name: AWS_SECRET_ACCESS_KEY
+                  valueFrom:
+                    secretKeyRef:
+                      name: restic-secret
+                      key: b2-app-key
+                - name: RESTIC_PASSWORD
+                  valueFrom:
+                    secretKeyRef:
+                      name: restic-secret
+                      key: restic-password
+                - name: RESTIC_REPOSITORY
+                  valueFrom:
+                    secretKeyRef:
+                      name: restic-secret
+                      key: repository
+              volumeMounts:
+                - name: data
+                  mountPath: /data
+                  readOnly: true
+          volumes:
+            - name: data
+              hostPath:
+                path: /opt/homelab
+                type: Directory
